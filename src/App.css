@@ -5,3 +5,50 @@
 .App {
   min-height: 100vh;
 }
+
+.app-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: #020617;
+  color: #e5e7eb;
+}
+
+.app-header {
+  padding: 1rem 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.3);
+  background: radial-gradient(circle at top left, #0f172a 0, #020617 60%);
+}
+
+.app-title {
+  margin: 0;
+  font-size: 1.4rem;
+}
+
+.app-tabs {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.app-tab {
+  border: none;
+  border-radius: 999px;
+  padding: 0.4rem 0.9rem;
+  font-size: 0.9rem;
+  cursor: pointer;
+  background: transparent;
+  color: #9ca3af;
+}
+
+.app-tab.active {
+  background: rgba(15, 23, 42, 0.9);
+  color: #e5e7eb;
+  border: 1px solid rgba(148, 163, 184, 0.6);
+}
+
+.app-main {
+  flex: 1;
+}

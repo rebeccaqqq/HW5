@@ -3,6 +3,7 @@ const express = require('express');
 const { MongoClient, ObjectId } = require('mongodb');
 const bcrypt = require('bcryptjs');
 const cors = require('cors');
+const { youtube_v3 } = require('@googleapis/youtube');
 
 const app = express();
 app.use(cors());
@@ -12,6 +13,9 @@ const URI = process.env.REACT_APP_MONGODB_URI || process.env.MONGODB_URI || proc
 const DB = 'chatapp';
 
 let db;
+const youtube = new youtube_v3.Youtube({
+  auth: process.env.YOUTUBE_API_KEY || '',
+});
 
 async function connect() {
   const client = await MongoClient.connect(URI);
@@ -47,7 +51,7 @@ app.get('/api/status', async (req, res) => {
 
 app.post('/api/users', async (req, res) => {
   try {
-    const { username, password, email } = req.body;
+    const { username, password, email, firstName, lastName } = req.body;
     if (!username || !password)
       return res.status(400).json({ error: 'Username and password required' });
     const name = String(username).trim().toLowerCase();
@@ -58,6 +62,8 @@ app.post('/api/users', async (req, res) => {
       username: name,
       password: hashed,
       email: email ? String(email).trim().toLowerCase() : null,
+      firstName: firstName ? String(firstName).trim() : null,
+      lastName: lastName ? String(lastName).trim() : null,
       createdAt: new Date().toISOString(),
     });
     res.json({ ok: true });
@@ -76,7 +82,12 @@ app.post('/api/users/login', async (req, res) => {
     if (!user) return res.status(401).json({ error: 'User not found' });
     const ok = await bcrypt.compare(password, user.password);
     if (!ok) return res.status(401).json({ error: 'Invalid password' });
-    res.json({ ok: true, username: name });
+    res.json({
+      ok: true,
+      username: name,
+      firstName: user.firstName || null,
+      lastName: user.lastName || null,
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -171,6 +182,120 @@ app.post('/api/messages', async (req, res) => {
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+// ── YouTube channel data ───────────────────────────────────────────────────────
+
+app.post('/api/youtube/channel', async (req, res) => {
+  try {
+    const { channelUrl, maxVideos = 10 } = req.body || {};
+    if (!channelUrl) return res.status(400).json({ error: 'channelUrl is required' });
+    if (!process.env.YOUTUBE_API_KEY) {
+      return res.status(500).json({ error: 'YOUTUBE_API_KEY is not configured on the server.' });
+    }
+
+    const limit = Math.max(1, Math.min(100, Number(maxVideos) || 10));
+
+    // Very simple handle extraction for URLs like https://www.youtube.com/@veritasium
+    let handle = null;
+    try {
+      const u = new URL(channelUrl);
+      const parts = u.pathname.split('/').filter(Boolean);
+      const atPart = parts.find((p) => p.startsWith('@'));
+      if (atPart) handle = atPart.slice(1);
+    } catch {
+      // ignore URL parse errors
+    }
+
+    // Find channel via search when we have a handle or free-text query
+    const searchResponse = await youtube.search.list({
+      part: ['snippet'],
+      type: ['channel'],
+      q: handle || channelUrl,
+      maxResults: 1,
+    });
+    const channelItem = searchResponse.data.items && searchResponse.data.items[0];
+    if (!channelItem) {
+      return res.status(404).json({ error: 'Channel not found for the provided URL.' });
+    }
+    const channelId = channelItem.snippet?.channelId || channelItem.id?.channelId;
+
+    const channelResponse = await youtube.channels.list({
+      part: ['snippet', 'contentDetails', 'statistics'],
+      id: [channelId],
+    });
+    const fullChannel = channelResponse.data.items && channelResponse.data.items[0];
+    if (!fullChannel) {
+      return res.status(404).json({ error: 'Unable to load channel metadata.' });
+    }
+
+    const uploadsId = fullChannel.contentDetails?.relatedPlaylists?.uploads;
+    if (!uploadsId) {
+      return res.status(500).json({ error: 'Channel uploads playlist not available.' });
+    }
+
+    const videos = [];
+    let nextPageToken = undefined;
+    while (videos.length < limit) {
+      const remaining = limit - videos.length;
+      const playlistResp = await youtube.playlistItems.list({
+        part: ['snippet', 'contentDetails'],
+        playlistId: uploadsId,
+        maxResults: Math.min(50, remaining),
+        pageToken: nextPageToken,
+      });
+      const items = playlistResp.data.items || [];
+      if (!items.length) break;
+      const ids = items
+        .map((it) => it.contentDetails && it.contentDetails.videoId)
+        .filter(Boolean);
+      if (!ids.length) break;
+
+      const videoResp = await youtube.videos.list({
+        part: ['snippet', 'contentDetails', 'statistics'],
+        id: ids,
+      });
+      const videoItems = videoResp.data.items || [];
+      for (const v of videoItems) {
+        const s = v.snippet || {};
+        const stats = v.statistics || {};
+        const details = v.contentDetails || {};
+        videos.push({
+          video_id: v.id,
+          title: s.title || '',
+          description: s.description || '',
+          transcript: null, // transcript fetching is optional and may require a separate API
+          duration: details.duration || '',
+          published_at: s.publishedAt || '',
+          view_count: Number(stats.viewCount || 0),
+          like_count: Number(stats.likeCount || 0),
+          comment_count: Number(stats.commentCount || 0),
+          video_url: `https://www.youtube.com/watch?v=${v.id}`,
+          thumbnail_url: s.thumbnails?.high?.url || s.thumbnails?.default?.url || null,
+        });
+        if (videos.length >= limit) break;
+      }
+
+      nextPageToken = playlistResp.data.nextPageToken;
+      if (!nextPageToken || videos.length >= limit) break;
+    }
+
+    const channelPayload = {
+      id: fullChannel.id,
+      title: fullChannel.snippet?.title || '',
+      description: fullChannel.snippet?.description || '',
+      handle: handle || null,
+      customUrl: fullChannel.snippet?.customUrl || null,
+      url: channelUrl,
+      subscriber_count: Number(fullChannel.statistics?.subscriberCount || 0),
+      video_count: Number(fullChannel.statistics?.videoCount || 0),
+      view_count: Number(fullChannel.statistics?.viewCount || 0),
+    };
+
+    res.json({ channel: channelPayload, videos });
+  } catch (err) {
+    res.status(500).json({ error: err.message || 'Failed to fetch YouTube channel data.' });
   }
 });
 

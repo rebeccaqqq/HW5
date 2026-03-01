@@ -1,0 +1,93 @@
+.metric-chart-shell {
+  margin-top: 0.75rem;
+  padding: 0.75rem 0.9rem;
+  border-radius: 0.9rem;
+  background: radial-gradient(circle at top left, #0b1120 0, #020617 55%);
+  border: 1px solid rgba(75, 85, 99, 0.7);
+  cursor: pointer;
+}
+
+.metric-chart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 0.4rem;
+}
+
+.metric-chart-title {
+  font-size: 0.9rem;
+  color: #e5e7eb;
+}
+
+.metric-chart-hint {
+  font-size: 0.75rem;
+  color: #9ca3af;
+}
+
+.metric-chart-inner {
+  height: 220px;
+}
+
+.metric-chart-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 40;
+}
+
+.metric-chart-modal-body {
+  width: min(900px, 100% - 2rem);
+  max-height: 90vh;
+  background: #020617;
+  border-radius: 1rem;
+  border: 1px solid rgba(75, 85, 99, 0.9);
+  display: flex;
+  flex-direction: column;
+}
+
+.metric-chart-modal-header {
+  padding: 0.75rem 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(55, 65, 81, 0.9);
+}
+
+.metric-chart-modal-header h3 {
+  margin: 0;
+  font-size: 1rem;
+  color: #e5e7eb;
+}
+
+.metric-chart-modal-header button {
+  border: none;
+  background: transparent;
+  color: #9ca3af;
+  font-size: 1.2rem;
+  cursor: pointer;
+}
+
+.metric-chart-modal-chart {
+  padding: 1rem;
+  height: 360px;
+}
+
+.metric-chart-modal-footer {
+  padding: 0.75rem 1rem 1rem;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.metric-chart-modal-footer button {
+  border: none;
+  border-radius: 999px;
+  padding: 0.45rem 0.9rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+  background: linear-gradient(90deg, #22c55e, #22c55e);
+  color: #022c22;
+}
+
