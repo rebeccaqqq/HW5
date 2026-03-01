@@ -10,17 +10,20 @@ export default function Auth({ onLogin }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setSuccess('');
     setLoading(true);
     try {
       const name = username.trim().toLowerCase();
       if (mode === 'create') {
         await createUser(name, password, email.trim(), firstName.trim(), lastName.trim());
         setError('');
+        setSuccess('Account created. Enter your password below to log in.');
         setMode('login');
         setPassword('');
         setEmail('');
@@ -29,9 +32,11 @@ export default function Auth({ onLogin }) {
       } else {
         const user = await findUser(name, password);
         if (!user) throw new Error('User not found or invalid password');
+        setSuccess('');
         onLogin(user);
       }
     } catch (err) {
+      setSuccess('');
       try {
         const j = JSON.parse(err.message);
         setError(j.error || err.message);
@@ -97,12 +102,13 @@ export default function Auth({ onLogin }) {
             required
             autoComplete={mode === 'create' ? 'new-password' : 'current-password'}
           />
+          {success && <p className="auth-success">{success}</p>}
           {error && (
-        <p className="auth-error">
-          {error}
-          {error.includes('already exists') && ' Try logging in instead.'}
-        </p>
-      )}
+            <p className="auth-error">
+              {error}
+              {error.includes('already exists') && ' Try logging in instead.'}
+            </p>
+          )}
           <button type="submit" disabled={loading}>
             {loading ? '...' : mode === 'login' ? 'Log in' : 'Create account'}
           </button>
@@ -113,6 +119,7 @@ export default function Auth({ onLogin }) {
           onClick={() => {
             setMode((m) => (m === 'login' ? 'create' : 'login'));
             setError('');
+            setSuccess('');
           }}
         >
           {mode === 'login' ? 'Create an account' : 'Already have an account? Log in'}

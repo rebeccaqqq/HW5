@@ -101,6 +101,17 @@
   border-radius: 8px;
 }
 
+.auth-success {
+  color: #86efac;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.85rem;
+  margin: -0.3rem 0 0.75rem;
+  padding: 0.5rem 0.75rem;
+  background: rgba(34, 197, 94, 0.15);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  border-radius: 8px;
+}
+
 .auth-switch {
   display: block;
   width: 100%;
